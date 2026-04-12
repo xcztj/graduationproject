@@ -43,8 +43,8 @@ class DRIU(nn.Module):
         feature_maps = self.base_network(x)
 
         # 提取像素级特征
-        vessel_features = self.vessel_specialized_layers(feature_maps[-4])
-        optic_disc_features = self.optic_disc_specialized_layers(feature_maps[0])
+        vessel_features = self.vessel_specialized_layers(feature_maps[3])
+        optic_disc_features = self.optic_disc_specialized_layers(feature_maps[4])
 
         # 调整大小并组合特征
         vessel_features = F.interpolate(vessel_features, size=self.input_size, mode="bilinear")
@@ -84,27 +84,33 @@ class VGG(nn.Module):
         self.conv5_3 = nn.Conv2d(512, 512, kernel_size=3, padding=1)
 
     def forward(self, x):
+        features = []
    
         x = F.relu(self.conv1_1(x))
         x = F.relu(self.conv1_2(x))
         x = self.pool1(x)
+        features.append(x)  # Block 1: 64 channels
 
         x = F.relu(self.conv2_1(x))
         x = F.relu(self.conv2_2(x))
         x = self.pool2(x)
+        features.append(x)  # Block 2: 128 channels
 
         x = F.relu(self.conv3_1(x))
         x = F.relu(self.conv3_2(x))
         x = F.relu(self.conv3_3(x))
         x = self.pool3(x)
+        features.append(x)  # Block 3: 256 channels
 
         x = F.relu(self.conv4_1(x))
         x = F.relu(self.conv4_2(x))
         x = F.relu(self.conv4_3(x))
         x = self.pool4(x)
+        features.append(x)  # Block 4: 512 channels
 
         x = F.relu(self.conv5_1(x))
         x = F.relu(self.conv5_2(x))
         x = F.relu(self.conv5_3(x))
+        features.append(x)  # Block 5: 512 channels
 
-        return [x]
+        return features

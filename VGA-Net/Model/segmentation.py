@@ -3,10 +3,10 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-from hdc_module import HDCModule
-from ab_ffm_module import AB_FFMModule
-from GCN import GATConv 
-from dropblock import Dropblock
+from Modules.hdc_module import HDCModule
+from Modules.ab_ffm_module import AB_FFMModule
+from Modules.GCN import GATConv 
+from Modules.dropblock_module import Dropblock
 
 class VGA_Net(nn.Module):
     def __init__(self, input_size):

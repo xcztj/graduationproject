@@ -3,6 +3,98 @@
 import torch
 import torch.nn as nn
 
+
+class ConvLSTMCell(nn.Module):
+    """ConvLSTM 单元，处理单个时间步"""
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
+        super(ConvLSTMCell, self).__init__()
+        
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        
+        # 输入到状态的卷积：将输入和隐藏状态拼接后通过卷积
+        self.conv = nn.Conv2d(
+            in_channels=in_channels + out_channels,
+            out_channels=4 * out_channels,  # 4个门：i, f, g, o
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding
+        )
+        
+    def forward(self, x, h_prev, c_prev):
+        """
+        Args:
+            x: 当前输入 (batch, in_channels, H, W)
+            h_prev: 前一时刻隐藏状态 (batch, out_channels, H, W)
+            c_prev: 前一时刻细胞状态 (batch, out_channels, H, W)
+        Returns:
+            h: 当前隐藏状态
+            c: 当前细胞状态
+        """
+        # 拼接输入和隐藏状态
+        combined = torch.cat([x, h_prev], dim=1)  # (batch, in_channels + out_channels, H, W)
+        
+        # 通过卷积得到4个门
+        conv_output = self.conv(combined)
+        cc_i, cc_f, cc_g, cc_o = torch.split(conv_output, self.out_channels, dim=1)
+        
+        # 门控
+        i = torch.sigmoid(cc_i)  # 输入门
+        f = torch.sigmoid(cc_f)  # 遗忘门
+        g = torch.tanh(cc_g)     # 候选状态
+        o = torch.sigmoid(cc_o)  # 输出门
+        
+        # 更新细胞状态和隐藏状态
+        c = f * c_prev + i * g
+        h = o * torch.tanh(c)
+        
+        return h, c
+
+
+class ConvLSTM(nn.Module):
+    """ConvLSTM 网络，处理整个序列"""
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
+        super(ConvLSTM, self).__init__()
+        
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.cell = ConvLSTMCell(in_channels, out_channels, kernel_size, stride, padding)
+        
+    def forward(self, x):
+        """
+        Args:
+            x: 输入序列 (seq_len, batch, in_channels, H, W) 或 (batch, in_channels, H, W)
+        Returns:
+            output: 输出序列 (seq_len, batch, out_channels, H, W)
+            (h, c): 最后的隐藏状态和细胞状态
+        """
+        # 如果输入是4维的（无序列维度），添加序列维度
+        if x.dim() == 4:
+            x = x.unsqueeze(0)  # (1, batch, in_channels, H, W)
+        
+        seq_len, batch, _, H, W = x.size()
+        
+        # 初始化隐藏状态和细胞状态
+        h = torch.zeros(batch, self.out_channels, H, W, device=x.device)
+        c = torch.zeros(batch, self.out_channels, H, W, device=x.device)
+        
+        # 存储输出
+        outputs = []
+        
+        # 遍历序列
+        for t in range(seq_len):
+            h, c = self.cell(x[t], h, c)
+            outputs.append(h)
+        
+        # 拼接输出
+        output = torch.stack(outputs, dim=0)  # (seq_len, batch, out_channels, H, W)
+        
+        return output, (h, c)
+
+
 class AB_FFMModule(nn.Module):
     def __init__(self):
         super().__init__()
@@ -31,8 +123,8 @@ class BConvLSTM(nn.Module):
 
         # 两个方向相反的 ConvLSTM
 
-        self.forward_lstm = nn.ConvLSTM(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
-        self.backward_lstm = nn.ConvLSTM(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.forward_lstm = ConvLSTM(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
+        self.backward_lstm = ConvLSTM(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
         # 通过两个 ConvLSTM

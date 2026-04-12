@@ -1,38 +1,39 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import torch
 import torch.nn as nn
-import numy as np
+import numpy as np
 from torch.utils.data import DataLoader
-import transforms
-from torchvision.transforms import ToTensor
 from sklearn.metrics import accuracy_score
-from dataset import DRIVEDataset
-from model import FinalNetwork
-import utils
+from Train.dataset import DRIVEDataset, ToTensor
+from Model.VGA_Net import FinalNetwork
+import Test.utils as utils
 
+# 定义设备
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# 定义 DRIVE 数据集目录路径
-drive_dataset_dir = 'path/to/drive/dataset'
+print(f"使用设备: {device}")
 
-transforms = transforms.Compose([
-    ToTensor(),
-    # 如需其他转换请添加
-])
+# 定义 DRIVE 数据集目录路径
+drive_dataset_dir = '/root/autodl-tmp/VGA-Net/DRIVE/test'
 
 # 加载数据集
-drive_dataset = DRIVEDataset(root_dir=drive_dataset_dir, transforms=None)
+drive_dataset = DRIVEDataset(root_dir=drive_dataset_dir, transform=ToTensor(), use_preprocessed=True)
 
 # 为测试集定义数据加载器
-test_loader = DataLoader(drive_dataset, batch_size=32)
+test_loader = DataLoader(drive_dataset, batch_size=4)
 
 # 定义模型
 model = FinalNetwork()
+model.to(device)
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.BCELoss()
 
 # 加载最佳模型
-model.load_state_dict(torch.load('best_model.pt'))
+model.load_state_dict(torch.load('/root/autodl-tmp/VGA-Net/Train/best_model.pt', map_location=device))
 
 # 在测试集上评估模型
 model.eval()
@@ -52,12 +53,16 @@ test_loss /= len(test_loader.dataset)
 predictions = np.concatenate(predictions, axis=0)
 test_labels = np.concatenate([batch['mask'].numpy() for batch in test_loader], axis=0)
 
+# 转换为 PyTorch Tensor 以兼容 utils 函数
+pred_tensor = torch.from_numpy((predictions > 0.5).astype(np.float32))
+label_tensor = torch.from_numpy(test_labels.astype(np.float32))
+
 ACC = accuracy_score(test_labels.flatten(), (predictions > 0.5).flatten())
 SP = utils.specificity_score(test_labels.flatten(), (predictions > 0.5).flatten())
 SE = utils.sensitivity_score(test_labels.flatten(), (predictions > 0.5).flatten())
-Dice = utils.dice_score(test_labels.flatten(), (predictions > 0.5).flatten())
+Dice = utils.dice_score(label_tensor.flatten(), pred_tensor.flatten())
 clDice = utils.centerline_dice_score(test_labels.flatten(), (predictions > 0.5).flatten())
-MCC = utils.matthews_correlation_coefficient(test_labels.flatten(), (predictions > 0.5).flatten())
+MCC = utils.matthews_correlation_coefficient(label_tensor.flatten().numpy(), pred_tensor.flatten().numpy())
 
 # 打印评估结果
 print("Test Loss:", test_loss)

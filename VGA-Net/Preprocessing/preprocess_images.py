@@ -95,6 +95,8 @@ def replace_black_area_back(original_image, modified_image):
     # 返回黑色区域已恢复的修改后图像
     return modified_image
 
+# 以下注释掉的是单张测试代码，现已使用批量处理
+'''
 # 加载原始图像
 original_image = cv2.imread('23_training.jpg')
 
@@ -129,79 +131,16 @@ for ax in axs.flat:
 # 显示图像
 plt.tight_layout()
 plt.show()
-
-
-#----------------------------
-#预处理版本 v2（不带 replace_black_area）
-# 加载原始图像
-original_image = cv2.imread('23_training.jpg')
-
-# 将图像转换为 LAB 颜色空间
-lab_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2LAB)
-
-# 将 LAB 图像拆分为 L、A 和 B 通道
-l_channel, a_channel, b_channel = cv2.split(lab_image)
-
-# 对 L 通道应用 CLAHE
-clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-clahe_l_channel = clahe.apply(l_channel)
-
-# 将 CLAHE 增强后的 L 通道与原始 A 和 B 通道合并
-clahe_lab_image = cv2.merge((clahe_l_channel, a_channel, b_channel))
-
-# 将 CLAHE 增强后的 LAB 图像转换回 BGR 颜色空间
-clahe_bgr_image = cv2.cvtColor(clahe_lab_image, cv2.COLOR_LAB2BGR)
-
-# 显示原始图像和 CLAHE 增强后的图像
-plt.figure(figsize=(15, 5))
-plt.subplot(1, 3, 1)
-plt.imshow(cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB))
-plt.title('原始图像')
-plt.axis('off')
-
-plt.subplot(1, 3, 2)
-plt.imshow(cv2.cvtColor(clahe_bgr_image, cv2.COLOR_BGR2RGB))
-plt.title('CLAHE 增强后的图像')
-plt.axis('off')
-
-# 应用非锐化掩模来锐化图像的函数
-def unsharp_mask(image, sigma=1.0, strength=1.5):
-    # 将图像拆分为 B、G 和 R 通道
-    b_channel, g_channel, r_channel = cv2.split(image)
-
-    # 对每个通道应用高斯模糊
-    blurred_b = cv2.GaussianBlur(b_channel, (0, 0), sigma)
-    blurred_g = cv2.GaussianBlur(g_channel, (0, 0), sigma)
-    blurred_r = cv2.GaussianBlur(r_channel, (0, 0), sigma)
-
-    # 计算每个通道的锐化图像
-    sharp_b = cv2.addWeighted(b_channel, 1.0 + strength, blurred_b, -strength, 0)
-    sharp_g = cv2.addWeighted(g_channel, 1.0 + strength, blurred_g, -strength, 0)
-    sharp_r = cv2.addWeighted(r_channel, 1.0 + strength, blurred_r, -strength, 0)
-
-    # 将锐化后的通道合并为单个图像
-    sharp_image = cv2.merge((sharp_b, sharp_g, sharp_r))
-
-    return sharp_image
-
-# 对 CLAHE 增强后的图像应用非锐化掩模
-unsharp_masked_image = unsharp_mask(clahe_bgr_image)
-
-plt.subplot(1, 3, 3)
-plt.imshow(cv2.cvtColor(unsharp_masked_image, cv2.COLOR_BGR2RGB))
-plt.title('非锐化掩模后的图像')
-plt.axis('off')
-plt.tight_layout()
-plt.show()
+'''
 #----------------------------
 #保存结果
 import os
 
-# 包含数据集的目录
-dataset_dir = 'yeganeh/dataset/DRIVE'
+# 包含数据集的目录（原始图像）
+dataset_dir = '/root/autodl-tmp/VGA-Net/DRIVE/test/images'
 
 # 保存预处理图像的目录
-output_dir = 'yeganeh/extracted/patches'
+output_dir = '/root/autodl-tmp/VGA-Net/DRIVE/test/preprocessed'
 
 # 如果输出目录不存在，则创建它
 if not os.path.exists(output_dir):

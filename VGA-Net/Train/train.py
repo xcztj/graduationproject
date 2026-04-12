@@ -1,25 +1,26 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
-import transforms
-from torchvision.transforms import ToTensor
+from torchvision import transforms
+from dataset import ToTensor
 from dataset import DRIVEDataset
-from model import FinalNetwork
-from utils import train_model
+from Model.VGA_Net import FinalNetwork
+from Test.utils import train_model
 
-# 定义 DRIVE 数据集目录路径
-drive_dataset_dir = 'path/to/drive/dataset'
+# 定义 DRIVE 数据集目录路径（训练集）
+drive_dataset_dir = '/root/autodl-tmp/VGA-Net/DRIVE/training'
 
 # 定义转换
-transform = transforms.Compose([
-    ToTensor(),
-    # 如需其他转换请添加
-])
+transform = ToTensor()
 
-# 加载数据集
-drive_dataset = DRIVEDataset(root_dir=drive_dataset_dir, transform=None)
+# 加载数据集（use_preprocessed=True 使用预处理后的图像）
+drive_dataset = DRIVEDataset(root_dir=drive_dataset_dir, transform=transform, use_preprocessed=True)
 
 # 将数据集拆分为训练集和测试集
 train_size = int(0.7 * len(drive_dataset))
@@ -28,8 +29,9 @@ test_size = len(drive_dataset) - train_size - val_size
 train_dataset, val_dataset, test_dataset = random_split(drive_dataset, [train_size, val_size, test_size])
 
 # 定义数据加载器
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=32)
+# 注意：训练集只有14张图像，batch_size 不能大于数据集大小
+train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=4)
 
 # 定义模型、损失函数和优化器
 model = FinalNetwork()

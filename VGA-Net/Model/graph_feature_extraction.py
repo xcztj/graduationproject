@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import torch
 import torch.nn as nn
-import GCN
+from Modules.GCN import GCN
 
 class GraphFeatureExtraction(nn.Module):
     def __init__(self, dropout_rate, feature_dim, num_heads, num_layers):
@@ -19,6 +20,13 @@ class GraphFeatureExtraction(nn.Module):
         self.dropout = nn.Dropout(p=self.dropout_rate)
 
     def forward(self, A, node_features):
+        """
+        Args:
+            A: (num_patches, num_patches) 邻接矩阵
+            node_features: (num_patches, feature_dim) 节点特征
+        Returns:
+            graph_features: (num_patches, feature_dim) 图特征
+        """
         # 提取图级特征
         graph_features = self.graph_conv(node_features, A)
 
