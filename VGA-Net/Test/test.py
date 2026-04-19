@@ -6,12 +6,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import torch
 import torch.nn as nn
+import Test.utils as utils
 import numpy as np
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
 from Train.dataset import DRIVEDataset, ToTensor
 from Model.VGA_Net import FinalNetwork
-import Test.utils as utils
 
 # 定义设备
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -30,7 +30,7 @@ test_loader = DataLoader(drive_dataset, batch_size=4)
 model = FinalNetwork()
 model.to(device)
 
-criterion = nn.BCELoss()
+criterion = utils.BCEDiceLoss(bce_weight=0.5, dice_weight=0.5)
 
 # 加载最佳模型
 model.load_state_dict(torch.load('/root/autodl-tmp/VGA-Net/Train/best_model.pt', map_location=device))

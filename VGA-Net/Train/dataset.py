@@ -4,20 +4,24 @@
 import os
 import cv2
 import torch
+import random
+import numpy as np
 from torch.utils.data import Dataset
 
 
 class DRIVEDataset(Dataset):
-    def __init__(self, root_dir, transform=None, use_preprocessed=False):
+    def __init__(self, root_dir, transform=None, use_preprocessed=False, augment=False):
         """
         Args:
             root_dir: 数据集根目录
             transform: 数据转换
             use_preprocessed: 是否使用预处理后的图像（默认为False使用原始images目录）
+            augment: 是否对训练数据进行随机增强（仅训练集使用）
         """
         self.root_dir = root_dir
         self.transform = transform
         self.use_preprocessed = use_preprocessed
+        self.augment = augment
         
         # 根据 use_preprocessed 选择图像目录
         image_dir = 'preprocessed' if use_preprocessed else 'images'
@@ -36,6 +40,23 @@ class DRIVEDataset(Dataset):
         
         image = cv2.imread(img_name)
         mask = cv2.imread(mask_name, cv2.IMREAD_GRAYSCALE)
+
+        # 数据增强：随机翻转、旋转（仅训练集）
+        if self.augment:
+            # 随机水平翻转
+            if random.random() > 0.5:
+                image = cv2.flip(image, 1)
+                mask = cv2.flip(mask, 1)
+            # 随机垂直翻转
+            if random.random() > 0.5:
+                image = cv2.flip(image, 0)
+                mask = cv2.flip(mask, 0)
+            # 随机旋转 90/180/270 度（注意：旋转会交换宽高，需单独处理）
+            # 暂时禁用旋转以避免 batch 内尺寸不一致
+            # if random.random() > 0.5:
+            #     k = random.choice([1, 2, 3])
+            #     image = np.rot90(image, k).copy()
+            #     mask = np.rot90(mask, k).copy()
 
         sample = {'image': image, 'mask': mask}
         if self.transform:

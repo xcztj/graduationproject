@@ -4,9 +4,11 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import torch
 import torch.optim as optim
 import torch.nn as nn
-from torch.utils.data import DataLoader, random_split
+from Test.utils import BCEDiceLoss
+from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 from dataset import ToTensor
 from dataset import DRIVEDataset
@@ -16,27 +18,28 @@ from Test.utils import train_model
 # 定义 DRIVE 数据集目录路径（训练集）
 drive_dataset_dir = '/root/autodl-tmp/VGA-Net/DRIVE/training'
 
-# 定义转换
-transform = ToTensor()
+# 分别创建训练集（带增强）和验证集（不带增强）
+train_dataset_full = DRIVEDataset(root_dir=drive_dataset_dir, transform=ToTensor(), use_preprocessed=True, augment=True)
+val_dataset_full = DRIVEDataset(root_dir=drive_dataset_dir, transform=ToTensor(), use_preprocessed=True, augment=False)
 
-# 加载数据集（use_preprocessed=True 使用预处理后的图像）
-drive_dataset = DRIVEDataset(root_dir=drive_dataset_dir, transform=transform, use_preprocessed=True)
+# 手动打乱并拆分索引：16 张训练，4 张验证
+indices = torch.randperm(len(train_dataset_full)).tolist()
+train_size = int(0.8 * len(indices))
+train_indices = indices[:train_size]
+val_indices = indices[train_size:]
 
-# 将数据集拆分为训练集和测试集
-train_size = int(0.7 * len(drive_dataset))
-val_size = int(0.2 * len(drive_dataset))
-test_size = len(drive_dataset) - train_size - val_size
-train_dataset, val_dataset, test_dataset = random_split(drive_dataset, [train_size, val_size, test_size])
+train_dataset = Subset(train_dataset_full, train_indices)
+val_dataset = Subset(val_dataset_full, val_indices)
 
 # 定义数据加载器
-# 注意：训练集只有14张图像，batch_size 不能大于数据集大小
+# 注意：训练集只有16张图像，batch_size 不能大于数据集大小
 train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=4)
 
 # 定义模型、损失函数和优化器
 model = FinalNetwork()
-criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+criterion = BCEDiceLoss(bce_weight=0.5, dice_weight=0.5)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)  # 学习率从 1e-3 降至 1e-4
 
 # 训练模型
 train_model(model, train_loader, val_loader, criterion, optimizer)

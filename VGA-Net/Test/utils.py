@@ -2,7 +2,40 @@
 
 
 import torch
+import torch.nn as nn
 from sklearn.metrics import confusion_matrix
+
+
+class DiceLoss(nn.Module):
+    """Dice Loss for binary segmentation"""
+    def __init__(self, smooth=1.0):
+        super(DiceLoss, self).__init__()
+        self.smooth = smooth
+
+    def forward(self, inputs, targets):
+        # flatten
+        inputs = inputs.view(-1)
+        targets = targets.view(-1)
+
+        intersection = (inputs * targets).sum()
+        dice = (2. * intersection + self.smooth) / (inputs.sum() + targets.sum() + self.smooth)
+        return 1 - dice
+
+
+class BCEDiceLoss(nn.Module):
+    """Combined BCE + Dice Loss"""
+    def __init__(self, bce_weight=0.5, dice_weight=0.5):
+        super(BCEDiceLoss, self).__init__()
+        self.bce = nn.BCELoss()
+        self.dice = DiceLoss()
+        self.bce_weight = bce_weight
+        self.dice_weight = dice_weight
+
+    def forward(self, inputs, targets):
+        bce_loss = self.bce(inputs, targets)
+        dice_loss = self.dice(inputs, targets)
+        return self.bce_weight * bce_loss + self.dice_weight * dice_loss
+
 
 def specificity_score(y_true, y_pred):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
@@ -75,7 +108,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             early_stopping_counter = 0
-            torch.save(model.state_dict(), 'best_model.pt')  # 保存最佳模型
+            torch.save(model.state_dict(), '/root/autodl-tmp/VGA-Net/Train/best_model.pt')  # 保存最佳模型
         else:
             early_stopping_counter += 1
             if early_stopping_counter >= patience:
