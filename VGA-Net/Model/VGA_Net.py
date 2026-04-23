@@ -45,7 +45,7 @@ class FinalNetwork(nn.Module):
         )
 
         # **分割部分**
-        self.segmentation = VGA_Net(input_size=self.input_size)
+        self.segmentation = VGA_Net(in_channels=2)
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -100,12 +100,12 @@ class FinalNetwork(nn.Module):
         )
 
         # **步骤 4：分割**
-        # 合并像素特征和图特征
+        # 将 pixel 特征和 graph 特征拼接后传入 VGA-Net 进行精细分割
         # pixel_features: (batch, 1, H, W)
         # graph_features_resized: (batch, 1, H, W)
-        combined_features = pixel_features + graph_features_resized
+        combined_features = torch.cat([pixel_features, graph_features_resized], dim=1)  # (batch, 2, H, W)
         
-        # 使用 Sigmoid 激活函数确保输出在 [0, 1] 范围内
-        output = torch.sigmoid(combined_features)
+        # VGA-Net：用 Attention Gate 替换 AB_FFMModule，图特征注入跳跃连接
+        output = self.segmentation(combined_features, graph_features_resized)
         
         return output

@@ -33,13 +33,14 @@ val_dataset = Subset(val_dataset_full, val_indices)
 
 # 定义数据加载器
 # 注意：训练集只有16张图像，batch_size 不能大于数据集大小
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=4)
+# batch_size 设为 1 以避免显存溢出
+train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=1)
 
 # 定义模型、损失函数和优化器
 model = FinalNetwork()
 criterion = BCEDiceLoss(bce_weight=0.5, dice_weight=0.5)
-optimizer = optim.Adam(model.parameters(), lr=1e-4)  # 学习率从 1e-3 降至 1e-4
+optimizer = optim.Adam(model.parameters(), lr=5e-4)  # 降低学习率稳定训练
 
 # 训练模型
 train_model(model, train_loader, val_loader, criterion, optimizer)

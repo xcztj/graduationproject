@@ -32,6 +32,8 @@ class BCEDiceLoss(nn.Module):
         self.dice_weight = dice_weight
 
     def forward(self, inputs, targets):
+        # 裁剪到 (1e-7, 1-1e-7) 防止 BCELoss 在预测接近 0/1 时爆炸
+        inputs = torch.clamp(inputs, min=1e-7, max=1-1e-7)
         bce_loss = self.bce(inputs, targets)
         dice_loss = self.dice(inputs, targets)
         return self.bce_weight * bce_loss + self.dice_weight * dice_loss
@@ -86,6 +88,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)  # 梯度裁剪
             optimizer.step()
 
             train_loss += loss.item() * inputs.size(0)
