@@ -44,8 +44,8 @@ class FinalNetwork(nn.Module):
             num_layers=self.num_layers
         )
 
-        # **分割部分**
-        self.segmentation = VGA_Net(in_channels=2)
+        # **分割部分**：DRIU 输出 32 通道特征 + graph 1 通道 = 33 通道输入
+        self.segmentation = VGA_Net(in_channels=33)
 
     def forward(self, x):
         batch_size = x.shape[0]
@@ -100,10 +100,10 @@ class FinalNetwork(nn.Module):
         )
 
         # **步骤 4：分割**
-        # 将 pixel 特征和 graph 特征拼接后传入 VGA-Net 进行精细分割
-        # pixel_features: (batch, 1, H, W)
+        # 将 pixel 特征 (32ch) 和 graph 特征 (1ch) 拼接后传入 VGA-Net
+        # pixel_features: (batch, 32, H, W)
         # graph_features_resized: (batch, 1, H, W)
-        combined_features = torch.cat([pixel_features, graph_features_resized], dim=1)  # (batch, 2, H, W)
+        combined_features = torch.cat([pixel_features, graph_features_resized], dim=1)  # (batch, 33, H, W)
         
         # VGA-Net：用 Attention Gate 替换 AB_FFMModule，图特征注入跳跃连接
         output = self.segmentation(combined_features, graph_features_resized)

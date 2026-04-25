@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from Test.utils import BCEDiceLoss
+from Test.utils import BCEDiceLoss, TverskyLoss, FocalDiceLoss
 from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
 from dataset import ToTensor
@@ -39,11 +39,12 @@ val_loader = DataLoader(val_dataset, batch_size=1)
 
 # 定义模型、损失函数和优化器
 model = FinalNetwork()
-criterion = BCEDiceLoss(bce_weight=0.5, dice_weight=0.5)
-optimizer = optim.Adam(model.parameters(), lr=5e-4)  # 降低学习率稳定训练
+# FocalDiceLoss: Focal 专攻难检细血管，Dice 保证整体质量
+criterion = FocalDiceLoss(alpha=0.25, gamma=2.0, dice_weight=0.4)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # 训练模型
-train_model(model, train_loader, val_loader, criterion, optimizer)
+train_model(model, train_loader, val_loader, criterion, optimizer, patience=15, num_epochs=150)
 
 # =============================================================================
 # import os
